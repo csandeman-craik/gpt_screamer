@@ -9,7 +9,6 @@
 #pragma once
 #include <juce_dsp/juce_dsp.h>
 #include <JuceHeader.h>
-#include "GptScreamer.h"
 
 //==============================================================================
 /**
@@ -53,16 +52,48 @@ public:
     //==============================================================================
     void getStateInformation (juce::MemoryBlock& destData) override;
     void setStateInformation (const void* data, int sizeInBytes) override;
+    
+    //==============================================================================
+    void updateBassShelf();
+    void updateTrebShelf();
 
+    std::unique_ptr<juce::AudioProcessorValueTreeState> apvts;
+    
 private:
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (GptScreamerAudioProcessor)
     
-    juce::dsp::Oversampling<float> oversampling { 1, 2, juce::dsp::Oversampling<float>::FilterType::filterHalfBandPolyphaseIIR, true };
-    juce::dsp::FirstOrderTPTFilter<float> inputHP;
-    juce::dsp::FirstOrderTPTFilter<float> preToneLP;
-    juce::dsp::WaveShaper<float> clipper;
-    juce::dsp::Gain<float> drive;
+    juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
     
-    GptScreamer ts;
+    // oversampler
+    juce::dsp::Oversampling<float> oversampling { 1, 2, juce::dsp::Oversampling<float>::FilterType::filterHalfBandPolyphaseIIR, true };
+    float oversampledRate;
+    
+    // these are static filters which won't change
+    juce::dsp::IIR::Filter<float> inputHP;
+    juce::dsp::IIR::Filter<float> preToneLP;
+    
+    // dynamic shelving that will change depending on tone - internal smoothing
+    juce::dsp::IIR::Filter<float> bassShelf;
+    juce::dsp::IIR::Filter<float> trebShelf;
+    
+    // clipping components
+    juce::dsp::WaveShaper<float> clipper;
+    juce::dsp::Gain<float> drive; // internal smoothing
+    
+    // dynamic parameters - no smoothing required
+    float tone; // 0.0 - 1.0
+    
+    // buffer for the parallel processed treble boost
+    juce::AudioBuffer<float> trebBuffer;
+    
+    // const for algorithms
+    const float input_HP_Fc = 723.4f;
+    const float Q_factor = 0.707f; // first order
+    const float pre_tone_LP_Fc = 1500.0f; //723.4f;
+    const float R_bass = 1000.0f; // 1KΩ
+    const float R_tone_pot = 20000; // 20KΩ
+    const float R_feed = 1000.0f; // 1KΩ
+    const float R_shunt = 220.0f; // 220Ω
+    const float C_shunt = 220e-9; // 220nF
 };

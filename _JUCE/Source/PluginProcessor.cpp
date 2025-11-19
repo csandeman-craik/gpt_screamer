@@ -9,7 +9,6 @@
 
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
-#include "GptScreamer.h"
 
 //==============================================================================
 GptScreamerAudioProcessor::GptScreamerAudioProcessor()
@@ -20,10 +19,8 @@ GptScreamerAudioProcessor::GptScreamerAudioProcessor()
 //                       )
 //#endif
 {
-    ts.setFs(44100);
-    inputHP.setType(juce::dsp::FirstOrderTPTFilterType::highpass);
-    preToneLP.setType(juce::dsp::FirstOrderTPTFilterType::lowpass);
     clipper.functionToUse = [](float x) { return std::tanh(x); };
+    apvts.reset(new juce::AudioProcessorValueTreeState(*this, nullptr, "Parameters", createParameterLayout()));
 }
 
 GptScreamerAudioProcessor::~GptScreamerAudioProcessor()
@@ -80,11 +77,33 @@ void GptScreamerAudioProcessor::changeProgramName (int index, const juce::String
 }
 
 //==============================================================================
+juce::AudioProcessorValueTreeState::ParameterLayout GptScreamerAudioProcessor::createParameterLayout()
+{
+    juce::AudioProcessorValueTreeState::ParameterLayout layout;
+
+    // --- TONE Parameter (Range 0.0 to 1.0) ---
+    layout.add(std::make_unique<juce::AudioParameterFloat>(
+        juce::ParameterID("TONE", 1),         // Parameter ID and version
+        "Tone",                               // User-facing name
+        juce::NormalisableRange<float>(0.0f, 1.0f, 0.01f), // Range: start, end, interval
+        0.5f                                  // Default value
+    ));
+
+    // --- DRIVE Parameter (Range 0 dB to 30 dB) ---
+    layout.add(std::make_unique<juce::AudioParameterFloat>(
+        juce::ParameterID("DRIVE", 1),        // Parameter ID and version
+        "Drive",                              // User-facing name
+        juce::NormalisableRange<float>(0.0f, 30.0f, 0.1f, 1.0f), // Range, interval, skew
+        10.0f                                  // Default value
+    ));
+
+    return layout;
+}
+
 void GptScreamerAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
 {
     // Create a spec for the oversampled audio
-    double oversampledRate = sampleRate * 4.0; // 2^2
-
+    oversampledRate = sampleRate * 4.0; // 2^2
     juce::dsp::ProcessSpec spec;
     spec.sampleRate = oversampledRate;
     spec.maximumBlockSize = samplesPerBlock * 4;
@@ -96,14 +115,79 @@ void GptScreamerAudioProcessor::prepareToPlay (double sampleRate, int samplesPer
     preToneLP.prepare(spec);
     clipper.prepare(spec);
     drive.prepare(spec);
+    bassShelf.prepare(spec);
+    trebShelf.prepare(spec);
 
-    // Set initial values
-    inputHP.setCutoffFrequency(723.0f);
-    preToneLP.setCutoffFrequency(1500.0f);
+    // set initial static filter values
+    *inputHP.coefficients = *juce::dsp::IIR::Coefficients<float>::makeHighPass(oversampledRate, input_HP_Fc, Q_factor);
+    *preToneLP.coefficients = *juce::dsp::IIR::Coefficients<float>::makeLowPass(oversampledRate, pre_tone_LP_Fc, Q_factor);
+    
+    // set initial dynamic shelf values
+    updateBassShelf();
+    updateTrebShelf();
     
     // Set the drive (60.0f is a gain of +35.5 dB, which is huge!)
     // We set gain in decibels for a more natural knob feel
     drive.setGainDecibels(35.5f);
+    
+    // prepare the buffer for parallel processing
+    trebBuffer.setSize (1, samplesPerBlock * 4, false, true, true);
+}
+
+void GptScreamerAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midiMessages)
+{
+    // thread-safe read of the slider values
+    tone = apvts->getRawParameterValue("TONE")->load();
+    drive.setGainDecibels(apvts->getRawParameterValue("DRIVE")->load());
+    
+    // up-sample
+    juce::dsp::AudioBlock<float> block(buffer);
+    juce::dsp::AudioBlock<float> ovBlock;
+    ovBlock = oversampling.processSamplesUp(block);
+    
+    // create a processing context for the oversampled block
+    juce::dsp::ProcessContextReplacing<float> ovContext(ovBlock);
+
+    // run the DSP chain (in order)
+    inputHP.process(ovContext);
+    drive.process(ovContext);
+    clipper.process(ovContext);
+    preToneLP.process(ovContext);
+    
+    // copy the processed ovBlock ready for parallel processing
+    juce::dsp::AudioBlock<float> trebBlock(trebBuffer);
+    trebBlock.copyFrom(ovBlock);
+    juce::dsp::ProcessContextReplacing<float> trebContext(trebBlock);
+    
+    // process tone-stack
+    bassShelf.process(ovBlock);
+    trebShelf.process(trebBlock);
+    
+    // down-sample
+    oversampling.processSamplesDown(block);
+    
+    // clear other channels (if host is stereo)
+    for (int ch = 1; ch < block.getNumChannels(); ++ch)
+        block.getSingleChannelBlock(ch).clear();
+}
+
+void GptScreamerAudioProcessor::updateBassShelf()
+{
+    float R_shunt_total_bass = (tone * R_tone_pot) + R_shunt;
+    float Fp_bass = 1 / (2 * M_PI * (R_bass + R_shunt_total_bass) * C_shunt);
+    float lo_cut_db = 20 * log10(R_shunt_total_bass / (R_bass + R_shunt_total_bass));
+    float targetGain = juce::Decibels::decibelsToGain(lo_cut_db);
+    *bassShelf.coefficients = *juce::dsp::IIR::Coefficients<float>::makeLowShelf(oversampledRate, Fp_bass, Q_factor, targetGain);
+}
+
+void GptScreamerAudioProcessor::updateTrebShelf()
+{
+    float R_shunt_total_treb = ((1 - tone) * R_tone_pot) + R_shunt;
+    float Fp_treb = 1 / (2 * M_PI * R_shunt_total_treb * C_shunt);
+    float Av = 1 + R_feed / R_shunt_total_treb;
+    float hi_boost_db = 20 * log10(Av);
+    float targetGain = juce::Decibels::decibelsToGain(hi_boost_db);
+    *trebShelf.coefficients = *juce::dsp::IIR::Coefficients<float>::makeHighShelf(oversampledRate, Fp_treb, Q_factor, targetGain);
 }
 
 void GptScreamerAudioProcessor::releaseResources()
@@ -130,31 +214,6 @@ bool GptScreamerAudioProcessor::isBusesLayoutSupported (const BusesLayout& layou
     return true;
 }
 #endif
-
-void GptScreamerAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midiMessages)
-{
-    juce::dsp::AudioBlock<float> block(buffer);
-    juce::dsp::AudioBlock<float> ovBlock;
-
-    // 1. Up-sample
-    ovBlock = oversampling.processSamplesUp(block);
-    
-    // Create a processing context for the oversampled block
-    juce::dsp::ProcessContextReplacing<float> context(ovBlock);
-
-    // 2. Run the DSP chain (in order)
-    inputHP.process(context);
-    preToneLP.process(context);
-    drive.process(context);
-    clipper.process(context);
-    
-    // 3. Down-sample
-    oversampling.processSamplesDown(block);
-    
-    // 4. Clear other channels (if host is stereo)
-    for (int ch = 1; ch < block.getNumChannels(); ++ch)
-        block.getSingleChannelBlock(ch).clear();
-}
 
 //==============================================================================
 bool GptScreamerAudioProcessor::hasEditor() const

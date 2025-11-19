@@ -25,6 +25,20 @@ GptScreamerAudioProcessorEditor::~GptScreamerAudioProcessorEditor()
 //==============================================================================
 void GptScreamerAudioProcessorEditor::paint (juce::Graphics& g)
 {
+    // 1. Set up the Tone Slider
+    toneSlider.setSliderStyle(juce::Slider::Rotary);
+    toneSlider.setTextBoxStyle(juce::Slider::TextBoxBelow, true, 50, 20);
+    addAndMakeVisible(toneSlider);
+    toneAttachment.reset(new juce::AudioProcessorValueTreeState::SliderAttachment(
+        *audioProcessor.apvts, "TONE", toneSlider));
+
+    // 2. Set up the Drive Slider
+    driveSlider.setSliderStyle(juce::Slider::Rotary);
+    driveSlider.setTextBoxStyle(juce::Slider::TextBoxBelow, true, 50, 20);
+    addAndMakeVisible(driveSlider);
+    driveAttachment.reset(new juce::AudioProcessorValueTreeState::SliderAttachment(
+        *audioProcessor.apvts, "DRIVE", driveSlider));
+    
     // (Our component is opaque, so we must completely fill the background with a solid colour)
     g.fillAll (getLookAndFeel().findColour (juce::ResizableWindow::backgroundColourId));
 
@@ -35,6 +49,9 @@ void GptScreamerAudioProcessorEditor::paint (juce::Graphics& g)
 
 void GptScreamerAudioProcessorEditor::resized()
 {
-    // This is generally where you'll want to lay out the positions of any
-    // subcomponents in your editor..
+    // Set bounds for the Tone Slider (e.g., in the top left quadrant)
+    toneSlider.setBounds(50, 50, 150, 150);
+        
+    // Set bounds for the Drive Slider (e.g., in the top right quadrant)
+    driveSlider.setBounds(200, 50, 150, 150);
 }
