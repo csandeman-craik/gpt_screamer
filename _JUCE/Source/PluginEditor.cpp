@@ -50,8 +50,8 @@ void GptScreamerAudioProcessorEditor::paint (juce::Graphics& g)
 void GptScreamerAudioProcessorEditor::resized()
 {
     // Set bounds for the Tone Slider (e.g., in the top left quadrant)
-    toneSlider.setBounds(50, 50, 150, 150);
+    toneSlider.setBounds(50, 50, 150, 170);
         
     // Set bounds for the Drive Slider (e.g., in the top right quadrant)
-    driveSlider.setBounds(200, 50, 150, 150);
+    driveSlider.setBounds(200, 50, 150, 170);
 }

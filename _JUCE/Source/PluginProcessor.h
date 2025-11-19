@@ -54,8 +54,8 @@ public:
     void setStateInformation (const void* data, int sizeInBytes) override;
     
     //==============================================================================
-    void updateBassShelf();
-    void updateTrebShelf();
+    void updateBassShelf(float tone);
+    void updateTrebShelf(float tone);
 
     std::unique_ptr<juce::AudioProcessorValueTreeState> apvts;
     
@@ -80,9 +80,6 @@ private:
     // clipping components
     juce::dsp::WaveShaper<float> clipper;
     juce::dsp::Gain<float> drive; // internal smoothing
-    
-    // dynamic parameters - no smoothing required
-    float tone; // 0.0 - 1.0
     
     // buffer for the parallel processed treble boost
     juce::AudioBuffer<float> trebBuffer;
