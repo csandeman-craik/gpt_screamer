@@ -41,17 +41,13 @@ void GptScreamerAudioProcessorEditor::paint (juce::Graphics& g)
     
     // (Our component is opaque, so we must completely fill the background with a solid colour)
     g.fillAll (getLookAndFeel().findColour (juce::ResizableWindow::backgroundColourId));
-
-    g.setColour (juce::Colours::white);
-    g.setFont (juce::FontOptions (15.0f));
-    g.drawFittedText ("GPT Screamer!", getLocalBounds(), juce::Justification::centred, 1);
 }
 
 void GptScreamerAudioProcessorEditor::resized()
 {
     // Set bounds for the Tone Slider (e.g., in the top left quadrant)
-    toneSlider.setBounds(50, 50, 150, 170);
+    toneSlider.setBounds(50, 50, 150, 190);
         
     // Set bounds for the Drive Slider (e.g., in the top right quadrant)
-    driveSlider.setBounds(200, 50, 150, 170);
+    driveSlider.setBounds(200, 50, 150, 190);
 }

@@ -1,2 +1,4 @@
 .DS_Store
 _JUCE/Builds/build/
+_JUCE/Builds/MacOSX/build
+_JUCE/Builds/iOS/build

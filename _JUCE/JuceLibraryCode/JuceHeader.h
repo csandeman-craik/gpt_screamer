@@ -13,6 +13,13 @@
 #pragma once
 
 
+#include <chowdsp_buffers/chowdsp_buffers.h>
+#include <chowdsp_core/chowdsp_core.h>
+#include <chowdsp_data_structures/chowdsp_data_structures.h>
+#include <chowdsp_dsp_data_structures/chowdsp_dsp_data_structures.h>
+#include <chowdsp_filters/chowdsp_filters.h>
+#include <chowdsp_math/chowdsp_math.h>
+#include <chowdsp_simd/chowdsp_simd.h>
 #include <juce_audio_basics/juce_audio_basics.h>
 #include <juce_audio_devices/juce_audio_devices.h>
 #include <juce_audio_formats/juce_audio_formats.h>

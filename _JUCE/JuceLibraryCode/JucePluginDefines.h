@@ -17,7 +17,7 @@
  #define JucePlugin_Build_VST3             0
 #endif
 #ifndef  JucePlugin_Build_AU
- #define JucePlugin_Build_AU               0
+ #define JucePlugin_Build_AU               1
 #endif
 #ifndef  JucePlugin_Build_AUv3
  #define JucePlugin_Build_AUv3             1
@@ -59,7 +59,7 @@
  #define JucePlugin_ManufacturerCode       0x4373636c
 #endif
 #ifndef  JucePlugin_PluginCode
- #define JucePlugin_PluginCode             0x47707473
+ #define JucePlugin_PluginCode             0x67707473
 #endif
 #ifndef  JucePlugin_IsSynth
  #define JucePlugin_IsSynth                0
@@ -110,7 +110,7 @@
  #define JucePlugin_AUManufacturerCode     JucePlugin_ManufacturerCode
 #endif
 #ifndef  JucePlugin_CFBundleIdentifier
- #define JucePlugin_CFBundleIdentifier     com.cscraik.ltd
+ #define JucePlugin_CFBundleIdentifier     com.cscraik.ltd.gpts
 #endif
 #ifndef  JucePlugin_AAXIdentifier
  #define JucePlugin_AAXIdentifier          com.CSCraikLtd.GptScreamer

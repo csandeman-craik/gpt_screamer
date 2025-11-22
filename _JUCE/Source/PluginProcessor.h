@@ -9,6 +9,7 @@
 #pragma once
 #include <juce_dsp/juce_dsp.h>
 #include <JuceHeader.h>
+#include <chowdsp_filters/LowerOrderFilters/chowdsp_FirstOrderFilters.h>
 
 //==============================================================================
 /**
@@ -71,10 +72,13 @@ private:
     
     // these are static filters which won't change
     juce::dsp::IIR::Filter<float> inputHP;
+    juce::dsp::IIR::Filter<float> preClipLP;
     juce::dsp::IIR::Filter<float> preToneLP;
+    juce::dsp::IIR::Filter<float> outputHP;
     
     // dynamic shelving that will change depending on tone - internal smoothing
-    juce::dsp::IIR::Filter<float> bassShelf;
+//    juce::dsp::IIR::Filter<float> bassShelf;
+    chowdsp::ShelfFilter<float> bassShelf;
     juce::dsp::IIR::Filter<float> trebShelf;
     
     // clipping components
@@ -86,11 +90,16 @@ private:
     
     // const for algorithms
     const float input_HP_Fc = 723.4f;
-    const float Q_factor = 0.707f; // first order
-    const float pre_tone_LP_Fc = 1500.0f; //723.4f;
+    const float Q_factor = 1.0f; // first order
+    const float Q_treb = 0.1f; // first order
+    const float pre_clip_LP_Fc = 15000.0f;
+    const float pre_tone_LP_Fc = 723.4f;
+    const float output_HP_Fc = 30.0f;
     const float R_bass = 1000.0f; // 1KΩ
-    const float R_tone_pot = 20000; // 20KΩ
+    const float R_tone_pot = 20000.0f; // 20KΩ
     const float R_feed = 1000.0f; // 1KΩ
     const float R_shunt = 220.0f; // 220Ω
-    const float C_shunt = 220e-9; // 220nF
+    const float C_shunt = 220e-9f; // 220nF
+    
+    float previousTone;
 };
