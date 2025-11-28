@@ -22,7 +22,7 @@ GptScreamerAudioProcessor::GptScreamerAudioProcessor()
 {
     clipper.functionToUse = [](float x) {
 //        DBG("input x is: " << x);
-        float v = x * 10;
+        float v = x * 3;
         double Vth = 0.55;
         double k = 8.0;
         double a = fabs(v);
