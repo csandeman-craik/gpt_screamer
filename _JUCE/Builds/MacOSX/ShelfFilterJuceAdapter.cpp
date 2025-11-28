@@ -13,7 +13,6 @@ public:
         shelfFilter.setup (spec.sampleRate, spec.maximumBlockSize);
     }
 
-    // 3. Implement the JUCE process(Context) function
     void process (const juce::dsp::ProcessContextReplacing<T>& context) override
     {
         auto& block = context.getInputBlock();

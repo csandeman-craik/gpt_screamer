@@ -66,9 +66,12 @@ private:
     
     juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
     
-    // oversampler
-    juce::dsp::Oversampling<float> oversampling { 1, 2, juce::dsp::Oversampling<float>::FilterType::filterHalfBandPolyphaseIIR, true };
+    // oversampler 2^3
+    juce::dsp::Oversampling<float> oversampling { 1, 3, juce::dsp::Oversampling<float>::FilterType::filterHalfBandPolyphaseIIR, true };
     float oversampledRate;
+    
+    // limiter
+    juce::dsp::Limiter<float> outputLimiter;
     
     // these are static filters which won't change
     juce::dsp::IIR::Filter<float> inputHP;
@@ -77,21 +80,25 @@ private:
     juce::dsp::IIR::Filter<float> outputHP;
     
     // dynamic shelving that will change depending on tone - internal smoothing
-//    juce::dsp::IIR::Filter<float> bassShelf;
-    chowdsp::ShelfFilter<float> bassShelf;
+//    chowdsp::ShelfFilter<float> bassShelf;
+    juce::dsp::IIR::Filter<float> bassShelf;
+    float currentBassBoostFactor = 0.0f;
+    
+
+//    chowdsp::ShelfFilter<float> trebShelf;
     juce::dsp::IIR::Filter<float> trebShelf;
+    float currentTrebBoostFactor = 0.0f; // Represents (Av - 1)
     
     // clipping components
     juce::dsp::WaveShaper<float> clipper;
-    juce::dsp::Gain<float> drive; // internal smoothing
+    juce::dsp::Gain<float> drive; // has internal smoothing
     
     // buffer for the parallel processed treble boost
+    juce::AudioBuffer<float> bassBuffer;
     juce::AudioBuffer<float> trebBuffer;
     
     // const for algorithms
     const float input_HP_Fc = 723.4f;
-    const float Q_factor = 1.0f; // first order
-    const float Q_treb = 0.1f; // first order
     const float pre_clip_LP_Fc = 15000.0f;
     const float pre_tone_LP_Fc = 723.4f;
     const float output_HP_Fc = 30.0f;
@@ -101,5 +108,6 @@ private:
     const float R_shunt = 220.0f; // 220Ω
     const float C_shunt = 220e-9f; // 220nF
     
-    float previousTone;
+    juce::SmoothedValue<float> smoothedTone { 0.5f }; // Initialize with default
+    float previousTone = 0.5f;
 };
